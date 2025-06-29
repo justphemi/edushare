@@ -32,49 +32,44 @@ const StudentRegister = () => {
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  if (!formData.classLevel) {
+    toast({
+      title: "Error",
+      description: "Please select your class level.",
+      variant: "destructive"
+    });
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    alert("start")
+    const { error } = await signUp(formData.email, formData.password, {
+      full_name: formData.fullName,
+      role: 'student', 
+      class_level: formData.classLevel
+    });
+    alert(error)
+    if (error) throw error;
     
-    if (!formData.classLevel) {
-      toast({
-        title: "Error",
-        description: "Please select your class level.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { error } = await signUp(formData.email, formData.password, {
-        full_name: formData.fullName,
-        role: 'student',
-        class_level: formData.classLevel
-      });
-
-      if (error) {
-        toast({
-          title: "Registration failed",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Registration successful!",
-          description: "Please check your email to confirm your account.",
-        });
-        navigate('/student/login');
-      }
-    } catch (error: any) {
-      toast({
-        title: "Registration failed",
-        description: error.message,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    toast({
+      title: "Registration successful!",
+      description: "Please check your email to confirm your account.",
+    });
+    navigate('/student/login');
+  } catch (error: any) {
+    toast({
+      title: "Registration failed",
+      description: error.message || 'An error occurred during registration',
+      variant: "destructive"
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
