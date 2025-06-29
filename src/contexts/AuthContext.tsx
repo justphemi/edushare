@@ -48,21 +48,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, metadata: any) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: metadata
-      }
-    });
-    
-    return { error };
-  };
+  
 
+const signUp = async (email: string, password: string, metadata: any) => {
+  const redirectUrl = `${window.location.origin}/`;
+  
+  //  create the auth user
+  const { data: { user }, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirectUrl,
+      data: metadata
+    }
+  });
+
+  if (authError) {
+    return { error: authError };
+  }
+
+  // now we can create the profile in the database
+  if (user) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        full_name: metadata.full_name,
+        role: metadata.role,
+        class_level: metadata.class_level,
+      });
+
+    if (profileError) {
+      // if we cannot save profile then we should delete the user
+      await supabase.auth.admin.deleteUser(user.id);
+      return { error: profileError };
+    }
+  }
+  
+  return { error: null };
+};
+
+  
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
