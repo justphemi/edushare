@@ -49,45 +49,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   
-
 const signUp = async (email: string, password: string, metadata: any) => {
   const redirectUrl = `${window.location.origin}/`;
   
-  //  create the auth user
-  const { data: { user }, error: authError } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: redirectUrl,
-      data: metadata
-    }
-  });
+  try {
+    // 1. Create auth user
+    const { data: { user }, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: metadata.full_name,
+          role: metadata.role
+        }
+      }
+    });
 
-  if (authError) {
-    return { error: authError };
-  }
+    if (authError) throw authError;
+    if (!user) throw new Error('User creation failed');
 
-  // now we can create the profile in the database
-  if (user) {
+    // 2. Create profile record
     const { error: profileError } = await supabase
       .from('profiles')
       .insert({
         id: user.id,
         full_name: metadata.full_name,
         role: metadata.role,
-        class_level: metadata.class_level,
+        class_level: metadata.class_level || null, // Make sure to handle null case
+        subject: null // Add any other required fields with defaults
       });
 
     if (profileError) {
-      // if we cannot save profile then we should delete the user
+      // Cleanup auth user if profile creation fails
       await supabase.auth.admin.deleteUser(user.id);
-      return { error: profileError };
+      throw profileError;
     }
-  }
-  
-  return { error: null };
-};
 
+    return { error: null };
+  } catch (error: any) {
+    return { error };
+  }
+};
   
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
